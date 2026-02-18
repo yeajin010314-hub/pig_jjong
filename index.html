@@ -1,0 +1,324 @@
+
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>장난 페이지</title>
+  <style>
+    :root{
+      --bg1:#fff7fb;
+      --bg2:#f2f7ff;
+      --card:#ffffffcc;
+      --stroke:#00000014;
+      --text:#1f2937;
+    }
+    *{ box-sizing:border-box; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", Arial; }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background: radial-gradient(900px 600px at 20% 20%, var(--bg1), transparent),
+                  radial-gradient(900px 600px at 80% 80%, var(--bg2), transparent),
+                  linear-gradient(180deg, #ffffff, #f8fafc);
+      color:var(--text);
+      overflow:hidden;
+    }
+
+    .card{
+      width:min(720px, 92vw);
+      padding:28px 24px;
+      border:1px solid var(--stroke);
+      background:var(--card);
+      backdrop-filter: blur(10px);
+      border-radius:22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.08);
+      position:relative;
+    }
+
+    .title{
+      font-size: clamp(26px, 4vw, 40px);
+      font-weight: 900;
+      text-align:center;
+      margin: 8px 0 12px;
+      letter-spacing:-0.02em;
+    }
+    .sub{
+      text-align:center;
+      opacity:.78;
+      margin:0 0 18px;
+    }
+
+    .stage{
+      position:relative;
+      height: 320px;
+      border-radius: 18px;
+      border: 1px dashed rgba(0,0,0,.10);
+      background: rgba(255,255,255,.65);
+      overflow:hidden;
+    }
+
+    .btn{
+      appearance:none;
+      border:0;
+      padding:14px 18px;
+      border-radius: 14px;
+      font-weight: 800;
+      cursor:pointer;
+      box-shadow: 0 14px 34px rgba(0,0,0,.10);
+      user-select:none;
+      position:absolute;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      white-space:nowrap;
+      transition: left 0.10s ease-out, top 0.10s ease-out, transform .12s ease, filter .12s ease;
+    }
+    .btn:active{ transform: translateY(1px) scale(0.99); }
+    .btn:hover{ filter: brightness(1.03); }
+
+    .yes{
+      left: 35%;
+      top: 55%;
+      background: linear-gradient(135deg, #ff4d8d, #ff8bb8);
+      color:white;
+    }
+    .no{
+      left: 55%;
+      top: 55%;
+      background: linear-gradient(135deg, #111827, #374151);
+      color:white;
+    }
+
+    .hint{
+      position:absolute;
+      bottom:12px;
+      left:12px;
+      font-size:12px;
+      opacity:.55;
+    }
+
+    /* 결과 화면 */
+    .result{
+      display:none;
+      height: 320px;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:10px;
+    }
+    .result.show{ display:flex; }
+
+    .char{
+      width: 140px;
+      height: 140px;
+      border-radius: 30px;
+      background: radial-gradient(circle at 30% 30%, #fff, #ffe4ef);
+      border: 1px solid rgba(0,0,0,.08);
+      display:grid;
+      place-items:center;
+      font-size: 72px;
+      box-shadow: 0 18px 50px rgba(255,77,141,.20);
+      transform: rotate(-3deg);
+    }
+    .msg{
+      font-size: 22px;
+      font-weight: 900;
+      text-align:center;
+    }
+    .small{
+      opacity:.75;
+      text-align:center;
+      margin:0;
+    }
+
+    .reset{
+      margin-top: 8px;
+      background: rgba(0,0,0,.06);
+      border: 1px solid rgba(0,0,0,.10);
+      box-shadow:none;
+      color:#111827;
+      position:static;
+      padding:10px 14px;
+      border-radius:12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="title">당신은 바보입니까?</div>
+    <p class="sub"></p>
+
+    <div class="stage" id="stage">
+      <button class="btn yes" id="yesBtn">✅ YES</button>
+      <button class="btn no" id="noBtn">❌ NO</button>
+
+      <div class="result" id="result">
+        <div class="char" id="charBox">🐶</div>
+        <div class="msg" id="msg"></div>
+        <p class="small">축하합니다</p>
+        <button class="reset" id="resetBtn">다시 고르기</button>
+      </div>
+
+      <div class="hint"></div>
+    </div>
+  </div>
+
+  <script>
+    // ====== 유틸 ======
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+    const stage = document.getElementById("stage");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn  = document.getElementById("noBtn");
+    const result = document.getElementById("result");
+    const resetBtn = document.getElementById("resetBtn");
+
+    // 결과 캐릭터/문구(원하면 여기 바꿔!)
+    const characters = ["🐶", "🐱", "🐰", "🦊", "🐻", "🐹"];
+    const messages = [
+      "당신은 바보똥꼬입니다😎💗."
+    ];
+
+    // 처음엔 % 위치였는데, JS로 움직이려면 px로 고정해주는 게 편함
+    function normalizeInitialButtonPositions() {
+      const stageRect = stage.getBoundingClientRect();
+
+      // YES
+      const yesRect = yesBtn.getBoundingClientRect();
+      yesBtn.style.left = (yesRect.left - stageRect.left) + "px";
+      yesBtn.style.top  = (yesRect.top  - stageRect.top)  + "px";
+
+      // NO
+      const noRect = noBtn.getBoundingClientRect();
+      noBtn.style.left = (noRect.left - stageRect.left) + "px";
+      noBtn.style.top  = (noRect.top  - stageRect.top)  + "px";
+    }
+
+    // ====== YES 클릭 ======
+    yesBtn.addEventListener("click", () => {
+      // 버튼 숨기고 결과 보여주기
+      yesBtn.style.display = "none";
+      noBtn.style.display  = "none";
+
+      // 랜덤 캐릭터/문구
+      document.getElementById("charBox").textContent =
+        characters[Math.floor(Math.random() * characters.length)];
+      document.getElementById("msg").textContent =
+        messages[Math.floor(Math.random() * messages.length)];
+
+      result.classList.add("show");
+    });
+
+    // 혹시 NO가 클릭되면? (거의 못 누르겠지만) 장난 멘트만
+    noBtn.addEventListener("click", () => {
+      alert("이건 왜눌렀니?");
+    });
+
+ // ====== NO 완전 회피 모드 ======
+    let mouseX = -9999, mouseY = -9999;
+    let noVX = 0, noVY = 0;
+
+    const panicRadius = 180;
+    const maxSpeed = 32;
+    const accel = 4.0;
+    const friction = 0.90;
+    const edgePad = 8;
+
+    // 🔥 window 전체에서 마우스 추적
+    window.addEventListener("mousemove", (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+  
+
+    function tickNoEscape(){
+      if (result.classList.contains("show")) return;
+
+      const stageRect = stage.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const bx = btnRect.left + btnRect.width / 2;
+      const by = btnRect.top  + btnRect.height / 2;
+
+      const dx = bx - mouseX;
+      const dy = by - mouseY;
+      const dist = Math.hypot(dx, dy) || 0.0001;
+
+      // 🔥 마우스가 거의 닿으면 강제 점프
+      if (dist < 40) {
+        const newX = Math.random() * (stageRect.width - btnRect.width - edgePad);
+        const newY = Math.random() * (stageRect.height - btnRect.height - edgePad);
+        noBtn.style.left = newX + "px";
+        noBtn.style.top  = newY + "px";
+        return;
+      }
+
+      // 가까우면 가속 도망
+      if (dist < panicRadius) {
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        const power = (panicRadius - dist) / panicRadius;
+        noVX += nx * accel * (1 + power * 2);
+        noVY += ny * accel * (1 + power * 2);
+      }
+
+      // 속도 제한
+      const speed = Math.hypot(noVX, noVY);
+      if (speed > maxSpeed) {
+        noVX = (noVX / speed) * maxSpeed;
+        noVY = (noVY / speed) * maxSpeed;
+      }
+
+      let left = parseFloat(noBtn.style.left) || 0;
+      let top  = parseFloat(noBtn.style.top)  || 0;
+
+      left += noVX;
+      top  += noVY;
+
+      noVX *= friction;
+      noVY *= friction;
+
+      const maxLeft = stageRect.width - btnRect.width - edgePad;
+      const maxTop  = stageRect.height - btnRect.height - edgePad;
+
+      if (left < edgePad) left = edgePad;
+      if (left > maxLeft) left = maxLeft;
+      if (top < edgePad) top = edgePad;
+      if (top > maxTop) top = maxTop;
+
+      noBtn.style.left = left + "px";
+      noBtn.style.top  = top + "px";
+    }
+
+    (function loop(){
+      tickNoEscape();
+      requestAnimationFrame(loop);
+    })();
+
+
+    // 리셋
+    resetBtn.addEventListener("click", () => {
+      result.classList.remove("show");
+      yesBtn.style.display = "inline-flex";
+      noBtn.style.display  = "inline-flex";
+      normalizeInitialButtonPositions(); // 다시 정렬
+
+      // 관성 초기화
+      noVX = 0; noVY = 0;
+      mouseX = -9999; mouseY = -9999;
+    });
+
+    // 첫 로드/리사이즈 때 px로 고정
+    window.addEventListener("load", normalizeInitialButtonPositions);
+    window.addEventListener("resize", normalizeInitialButtonPositions);
+  </script>
+</body>
+</html>
